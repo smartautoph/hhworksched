@@ -14,7 +14,7 @@ function doGet(e) {
 
   try {
     if (!agentId) {
-      return respond({ ok: false, error: 'Agent ID is required.' }, callback);
+      return respond(getDailySchedule(), callback);
     }
 
     return respond(getSchedule(agentId, view), callback);
@@ -29,6 +29,70 @@ function doGet(e) {
       code: 'SCHEDULE_READ_ERROR'
     }, callback);
   }
+}
+
+function getDailySchedule() {
+  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const sheet = ss.getSheetById(CONFIG.SCHEDULE_SHEET_GID) || findScheduleSheet(ss);
+
+  if (!sheet) throw new Error('The configured schedule tab could not be found.');
+
+  const values = sheet.getDataRange().getValues();
+  if (!values || values.length < 2) throw new Error('The schedule sheet is empty.');
+
+  const layout = findScheduleLayout(values);
+  if (layout.agentCol < 0) throw new Error('Agent ID column was not found.');
+  if (layout.nameCol < 0) throw new Error('Agent Name column was not found.');
+
+  const now = new Date();
+  const todayKey = Utilities.formatDate(now, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+  const dateCol = layout.headers.findIndex(function(h) {
+    const d = parseScheduleDate(h);
+    return d && Utilities.formatDate(d, CONFIG.TIMEZONE, 'yyyy-MM-dd') === todayKey;
+  });
+
+  const agents = [];
+  if (dateCol < 0) {
+    return {
+      ok: true,
+      timezone: CONFIG.TIMEZONE,
+      date: todayKey,
+      day: Utilities.formatDate(now, CONFIG.TIMEZONE, 'EEE'),
+      dateLabel: Utilities.formatDate(now, CONFIG.TIMEZONE, 'MMM d'),
+      shift: { start: CONFIG.DEFAULT_SHIFT_START, end: CONFIG.DEFAULT_SHIFT_END },
+      agents: []
+    };
+  }
+
+  values.slice(layout.headerRow + 1).forEach(function(row) {
+    const agentId = String(row[layout.agentCol] || '').trim();
+    const agentName = String(row[layout.nameCol] || '').trim();
+    const setup = normalizeSetup(row[dateCol]);
+
+    if (agentId && agentName && setup) {
+      agents.push({
+        agentId: agentId,
+        agentName: agentName,
+        workSetup: setup,
+        shiftStart: CONFIG.DEFAULT_SHIFT_START,
+        shiftEnd: CONFIG.DEFAULT_SHIFT_END
+      });
+    }
+  });
+
+  agents.sort(function(a, b) {
+    return a.agentName.localeCompare(b.agentName);
+  });
+
+  return {
+    ok: true,
+    timezone: CONFIG.TIMEZONE,
+    date: todayKey,
+    day: Utilities.formatDate(now, CONFIG.TIMEZONE, 'EEE'),
+    dateLabel: Utilities.formatDate(now, CONFIG.TIMEZONE, 'MMM d'),
+    shift: { start: CONFIG.DEFAULT_SHIFT_START, end: CONFIG.DEFAULT_SHIFT_END },
+    agents: agents
+  };
 }
 
 function getSchedule(agentId, view) {
