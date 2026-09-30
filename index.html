@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HH Work Schedule</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--text:#172033;--muted:#667085;--line:#e5e7eb;--primary:#2563eb}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--text)}
+.wrap{max-width:900px;margin:auto;padding:30px 18px 50px}.brand{font-size:13px;font-weight:800;letter-spacing:.08em;color:var(--primary)}
+h1{margin:5px 0;font-size:32px}.sub{color:var(--muted);margin:0 0 24px}.search{display:flex;gap:10px;margin-bottom:20px}
+input{flex:1;border:1px solid var(--line);border-radius:12px;padding:14px;font-size:16px}button{border:0;border-radius:12px;padding:12px 18px;font-weight:700;cursor:pointer}
+.primary{background:var(--primary);color:white}.tabs{display:flex;background:#e9edf5;padding:4px;border-radius:12px;margin:18px 0}.tab{flex:1;background:transparent;color:#475467}.tab.active{background:#fff;color:var(--text)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;margin-bottom:15px}.name{font-size:22px;font-weight:800}.muted{color:var(--muted);font-size:13px}
+.today{font-size:13px;color:var(--muted)}.setup{font-size:30px;font-weight:850;margin:7px 0}.shift{color:#475467}
+.row{display:grid;grid-template-columns:90px 1fr 115px 140px;gap:10px;align-items:center;padding:14px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}
+.badge{display:inline-block;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:800}.wfh{background:#eef6ff;color:#175cd3}.onsite{background:#ecfdf3;color:#067647}.off{background:#f3f4f6;color:#475467}
+.error{display:none;background:#fef3f2;color:#b42318;border:1px solid #fecdca;padding:12px;border-radius:12px}.empty,.loading{text-align:center;color:var(--muted);padding:30px}
+@media(max-width:650px){.search{flex-direction:column}.primary{height:48px}.row{grid-template-columns:1fr 1fr}.setup{font-size:25px}}
+</style></head>
+<body><div class="wrap">
+<div class="brand">HH WORK SCHEDULE</div><h1>My Schedule</h1><p class="sub">Enter your Agent ID to view your schedule.</p>
+<div class="search"><input id="agentId" placeholder="Agent ID (e.g. A001)"><button class="primary" onclick="load()">View Schedule</button></div>
+<div id="error" class="error"></div><div id="app"></div></div>
+<script src="config.js"></script><script>
+let view='today';
+function load(v=view){view=v;const id=document.getElementById('agentId').value.trim();if(!id)return err('Please enter your Agent ID.');hide();document.getElementById('app').innerHTML='<div class="loading">Loading…</div>';
+const cb='cb_'+Date.now();window[cb]=d=>{delete window[cb];render(d)};const s=document.createElement('script');s.src=APP_CONFIG.API_URL+'?agentId='+encodeURIComponent(id)+'&view='+view+'&callback='+cb;s.onerror=()=>err('Unable to connect to the schedule service.');document.body.appendChild(s)}
+function render(d){if(!d.ok){err(d.error);return}let html='<div class="card"><div class="name">'+esc(d.agentName)+'</div><div class="muted">Agent ID: '+esc(d.agentId)+' · PHT · '+esc(d.shift.start)+'–'+esc(d.shift.end)+'</div></div><div class="tabs">'+tab('today','Today')+tab('week','This Week')+tab('month','This Month')+'</div>';
+if(view==='today')html+=today(d.today);else html+=list(d.schedule,view==='week'?'This Week':'This Month');document.getElementById('app').innerHTML=html}
+function tab(v,t){return '<button class="tab '+(view===v?'active':'')+'" onclick="load(\''+v+'\')">'+t+'</button>'}
+function today(x){if(!x)return '<div class="card empty">No schedule is recorded for today.</div>';return '<div class="card"><div class="today">'+esc(x.day+', '+x.dateLabel)+'</div><div class="setup">'+icon(x.workSetup)+' '+esc(x.workSetup)+'</div><div class="shift">'+esc(x.shiftStart)+' – '+esc(x.shiftEnd)+' PHT</div></div>'}
+function list(a,t){if(!a.length)return '<div class="card empty">No schedule is recorded for this period.</div>';let h='<div class="card"><h2 style="margin:0">'+t+'</h2><div class="muted">All times Philippine Time</div>';a.forEach(x=>{let c=x.workSetup==='WFH'?'wfh':x.workSetup==='ONSITE'?'onsite':'off';h+='<div class="row"><div><b>'+esc(x.day)+'</b><div class="muted">'+esc(x.dateLabel)+'</div></div><div class="muted">'+esc(x.shiftStart)+' – '+esc(x.shiftEnd)+'</div><div><span class="badge '+c+'">'+icon(x.workSetup)+' '+esc(x.workSetup)+'</span></div><div class="muted">'+desc(x.workSetup)+'</div></div>'});return h+'</div>'}
+function icon(x){return x==='WFH'?'🏠':x==='ONSITE'?'🏢':x==='OFF'?'—':'•'}function desc(x){return x==='WFH'?'Work from Home':x==='ONSITE'?'Onsite':x}
+function esc(x){return String(x??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function err(x){document.getElementById('error').textContent=x;document.getElementById('error').style.display='block';document.getElementById('app').innerHTML=''}function hide(){document.getElementById('error').style.display='none'}
+document.getElementById('agentId').addEventListener('keydown',e=>{if(e.key==='Enter')load()});
+</script></body></html>
