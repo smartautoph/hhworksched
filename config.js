@@ -1,1 +1,1 @@
-const APP_CONFIG={API_URL:'PASTE_APPS_SCRIPT_WEB_APP_URL_HERE'};
+const APP_CONFIG={API_URL:'https://script.google.com/macros/s/AKfycbzJ24jeHtRpmjmkirrLRQqTVfPzh1Fmb14I00gXfaNt2e2RlPI4m8tLC6kLpfsIuE8Y/exec'};
